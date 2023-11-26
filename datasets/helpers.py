@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F 
 import os
 import numpy as np
+import json
 
 VOC12_PIXEL_WEIGHTLIST = [0.000904033501971689, 
                           0.05580971950578698, 
@@ -39,6 +40,11 @@ def get_file_paths(directory):
             file_path = os.path.join(root, file)
             file_paths.append(file_path)
     return file_paths
+
+def save_json_filelist(pathlist, save_path):
+    filelist = [os.path.basename(path) for path in pathlist] 
+    with open(save_path, "w") as fp:
+        fp.write(str(json.dumps(filelist))) 
 
 class ToOneHotMask(object):
     def __init__(self, num_classes):

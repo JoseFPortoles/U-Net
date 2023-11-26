@@ -1,6 +1,6 @@
 from models.ext_unet import UNet
 from models.helpers import init_weights
-from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths
+from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths, save_json_filelist
 from datasets.VOC import VOCSegmentationDataset
 from transforms.transforms import transform, val_transform
 import torch
@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 import os
 import argparse
 import tqdm
+import json
 
 parser = argparse.ArgumentParser(prog='train.py', description='Train U-Net for segmentation task')
 
@@ -25,6 +26,8 @@ parser.add_argument('--num_segment_categories', type=int, default=22, help='Numb
 parser.add_argument('--weights_path', type=str, default=None, help='Weights file path. If =None then initialise net w/ Xavier function.')
 parser.add_argument('--data_root', type=str, help='Dataset root folder path')
 parser.add_argument('--output_path', type=str, default='./checkpoints', help='Folder where trained weights are saved')
+parser.add_argument('--repartition_set', action='store_true', help='Repartition dataset')
+parser.add_argument('--partition_folder', type=str, )
 
 args = parser.parse_args()
 
@@ -38,6 +41,8 @@ def main(args):
     weights_path = args.weights_path
     data_root = args.data_root
     output_path = args.output_path
+    repartition_set = args.repartition_set
+    partition_folder = args.partition_folder
 
     if os.path.exists(output_path) is False:
         os.mkdir(output_path)
@@ -66,7 +71,19 @@ def main(args):
     file_names = [os.path.splitext(os.path.basename(path))[0] for path in mask_paths]
     image_paths = [os.path.join(dir_jpg, name + ".jpg") for name in file_names]
 
-    image_train, image_val, mask_train, mask_val = train_test_split(image_paths, mask_paths, test_size=0.2, random_state=42)
+    train_list_path = os.path.join(partition_folder, 'train.txt')
+    val_list_path = os.path.join(partition_folder, 'val.txt')
+
+    if repartition_set:
+        image_train, image_val, mask_train, mask_val = train_test_split(image_paths, mask_paths, test_size=0.2, random_state=42)
+        save_json_filelist(image_train, train_list_path)
+        save_json_filelist(image_val, val_list_path)
+    elif os.path.isfile(train_list_path) and os.path.isfile(val_list_path):
+        print(f"Loading partition stored at {partition_folder}")
+        with open(os.path.join(partition_folder), "r") as fp:
+            filelist = json.load(fp)
+            image_train = [os.path.join(dir_jpg, img_file) for img_file in filelist]
+            mask_train = [os.path.join(mask_paths, file[:-3]+'png') for file in filelist]
 
     train_dataset = VOCSegmentationDataset(image_train, mask_train, crop_size=input_size, transform=transform(input_size))
     val_dataset = VOCSegmentationDataset(image_val, mask_val, crop_size=input_size, transform=val_transform(input_size))
@@ -118,3 +135,6 @@ def main(args):
 
         # Imprimir métricas de entrenamiento y validación
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val IoU: {val_iou:.4f}")
+
+if __name__ == '__main__':
+    main(args)
