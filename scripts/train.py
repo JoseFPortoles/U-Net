@@ -4,7 +4,8 @@ from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths, save_json_f
 from datasets.VOC import VOCSegmentationDataset
 from transforms.transforms import transform, val_transform
 import torch
-import torch.optim as optim
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ExponentialLR
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torchvision
@@ -90,7 +91,8 @@ def main(args):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    optimizer = optim.Adam(unet.parameters(), lr=lr, weight_decay=wd)
+    optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
+    scheduler = ExponentialLR(optimizer, gamma=0.9, verbose=True)
 
     loss_weights=torch.Tensor(VOC12_PIXEL_WEIGHTLIST)
     criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
@@ -132,6 +134,8 @@ def main(args):
             if val_iou >= best_iou:
                 best_iou = val_iou
                 torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
+        
+        scheduler.step()
 
         # Imprimir métricas de entrenamiento y validación
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val IoU: {val_iou:.4f}")
