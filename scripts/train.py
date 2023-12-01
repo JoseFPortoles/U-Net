@@ -8,6 +8,7 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from torchmetrics import JaccardIndex
 from sklearn.model_selection import train_test_split
@@ -15,6 +16,7 @@ import os
 import argparse
 import tqdm
 import json
+
 
 parser = argparse.ArgumentParser(prog='train.py', description='Train U-Net for segmentation task')
 
@@ -44,6 +46,8 @@ def main(args):
     output_path = args.output_path
     repartition_set = args.repartition_set
     partition_folder = args.partition_folder
+
+    writer = SummaryWriter()
 
     if os.path.exists(output_path) is False:
         os.mkdir(output_path)
@@ -105,15 +109,18 @@ def main(args):
         unet.train()  
 
         for idx, (images, masks) in enumerate(tqdm(train_loader)):
+            iter = idx + batch_size * epoch
             images = images.to(device)
             optimizer.zero_grad()
             outputs = unet(images)
             masks = masks.to(device)
             loss = criterion(outputs, masks)
+            writer.add_scalar("train. loss (iter)", loss, iter)
             if idx%50 == 0:
                 print(f"Training loss (iter {idx}) = {loss}")
             loss.backward()
             optimizer.step()
+        writer.add_scalar("train. loss (epoch)", loss, epoch)
 
         unet.eval()
 
@@ -130,15 +137,15 @@ def main(args):
 
             val_loss /= len(val_loader)
             val_iou /= len(val_loader)
-
+            writer.add_scalar("val. loss (epoch)", val_loss, iter)
+            writer.add_scalar("val. IoU (epoch)", val_iou, iter)
+            
             if val_iou >= best_iou:
                 best_iou = val_iou
                 torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
         
         scheduler.step()
-
-        # Imprimir métricas de entrenamiento y validación
-        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}, Val IoU: {val_iou:.4f}")
+    writer.flush()
 
 if __name__ == '__main__':
     main(args)
