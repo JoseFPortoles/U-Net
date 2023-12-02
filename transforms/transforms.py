@@ -26,7 +26,7 @@ def transform(img_size):
 def val_transform(crop_size):
     crop_size = reshape_img_size(crop_size)    
     return A.Compose([
-                RandomCrop(crop_size),
+                RandomCrop(*crop_size),
                 Normalize(),
                 ToTensorV2()
             ])
