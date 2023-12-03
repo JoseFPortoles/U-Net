@@ -1,5 +1,5 @@
 from models.ext_unet import UNet
-from models.helpers import init_weights
+from models.helpers import init_weights, freeze_encoder
 from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths, save_json_filelist
 from datasets.VOC import VOCSegmentationDataset
 from transforms.transforms import transform, val_transform
@@ -31,6 +31,7 @@ parser.add_argument('--data_root', type=str, help='Dataset root folder path')
 parser.add_argument('--output_path', type=str, default='./checkpoints', help='Folder where trained weights are saved')
 parser.add_argument('--repartition_set', action='store_true', help='Repartition dataset')
 parser.add_argument('--partition_folder', type=str, )
+parser.add_argument('--frozen_encoder', action='store_true', help='Freezes encoder')
 
 args = parser.parse_args()
 
@@ -46,6 +47,8 @@ def main(args):
     output_path = args.output_path
     repartition_set = args.repartition_set
     partition_folder = args.partition_folder
+    frozen_encoder = args.frozen_encoder
+    
 
     writer = SummaryWriter()
 
@@ -55,6 +58,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     unet = UNet(weights=torchvision.models.VGG16_BN_Weights.IMAGENET1K_V1, out_channels=out_channels).to(device)
+    unet = freeze_encoder(unet, freeze=frozen_encoder)
 
     if weights_path:
         if os.path.exists(weights_path):
@@ -107,7 +111,7 @@ def main(args):
     jaccard = JaccardIndex(task='multiclass', num_classes=out_channels).to(device)
 
     for epoch in range(num_epochs):
-        last_lr = scheduler.get_last_lr()
+        last_lr = optimizer.param_groups[0]['lr']
         unet.train()  
 
         for idx, (images, masks) in enumerate(tqdm(train_loader)):
