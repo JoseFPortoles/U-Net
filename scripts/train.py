@@ -58,6 +58,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     unet = UNet(weights=torchvision.models.VGG16_BN_Weights.IMAGENET1K_V1, out_channels=out_channels).to(device)
+    # unet.xavier_init_decoder()
     unet = freeze_encoder(unet, freeze=frozen_encoder)
 
     if weights_path:
@@ -71,9 +72,9 @@ def main(args):
         else:
             unet.apply(init_weights)
             print("Specified weights path does not exist, model was xavier initialised")
-    else:
-        unet.apply(init_weights)
-        print("No specified weights path, model was xavier initialised")
+    # else:
+    #     unet.apply(init_weights)
+    #     print("No specified weights path, model was xavier initialised")
 
     mask_paths = get_file_paths(os.path.join(data_root, 'SegmentationClass')) 
     dir_jpg = os.path.join(data_root, 'JPEGImages') 
@@ -100,8 +101,7 @@ def main(args):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
-    # scheduler = ExponentialLR(optimizer, gamma=0.9, verbose=True)
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=3, verbose=False)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2, verbose=False)
 
     loss_weights=torch.Tensor(VOC12_PIXEL_WEIGHTLIST)
     criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
@@ -113,9 +113,9 @@ def main(args):
     for epoch in range(num_epochs):
         last_lr = optimizer.param_groups[0]['lr']
         unet.train()  
-
+        iter_epoch = len(train_loader)
         for idx, (images, masks) in enumerate(tqdm(train_loader)):
-            iter = idx + batch_size * epoch
+            iter = idx +  iter_epoch * epoch
             images = images.to(device)
             optimizer.zero_grad()
             outputs = unet(images)

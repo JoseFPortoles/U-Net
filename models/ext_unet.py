@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import torchvision
 from torchvision.models import vgg16_bn
+from models.helpers import init_weights
 
 
 def conv(in_channels, out_channels):
@@ -45,6 +46,24 @@ class UNet(nn.Module):
         self.up_conv10 = up_conv(64, 32)
         self.conv10 = conv(32 + 64, 32)
         self.conv11 = nn.Conv2d(32, out_channels, kernel_size=1)
+    
+    def xavier_init_decoder(self):
+        decoder_layers = [
+            self.conv_bottleneck,
+            self.up_conv6,
+            self.conv6,
+            self.up_conv7,
+            self.conv7,
+            self.up_conv8, 
+            self.conv8,
+            self.up_conv9,
+            self.conv9,
+            self.up_conv10,
+            self.conv10,
+            self.conv11
+        ]
+        for layer in decoder_layers:
+            init_weights(layer)
         
     def forward(self, x):
         block1 = self.block1(x)
