@@ -32,6 +32,7 @@ parser.add_argument('--output_path', type=str, default='./checkpoints', help='Fo
 parser.add_argument('--repartition_set', action='store_true', help='Repartition dataset')
 parser.add_argument('--partition_folder', type=str, )
 parser.add_argument('--frozen_encoder', action='store_true', help='Freezes encoder')
+parser.add_argument('--add_contour_loss_weight', type=float, default=0, help='Add extra weight to segmentation of contours (See original U-Net article)')
 
 args = parser.parse_args()
 
@@ -48,6 +49,7 @@ def main(args):
     repartition_set = args.repartition_set
     partition_folder = args.partition_folder
     frozen_encoder = args.frozen_encoder
+    extra_contour_w = args.add_contour_loss_weight
     
 
     writer = SummaryWriter()
@@ -103,7 +105,9 @@ def main(args):
     optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2, verbose=False)
 
-    loss_weights=torch.Tensor(VOC12_PIXEL_WEIGHTLIST)
+    loss_weights = [VOC12_PIXEL_WEIGHTLIST[k] + (k == 'contour') * extra_contour_w for k in VOC12_PIXEL_WEIGHTLIST]
+
+    loss_weights=torch.Tensor(loss_weights)
     criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
     print(f"Loss function: Applied category pixel weights = {loss_weights}")
 
