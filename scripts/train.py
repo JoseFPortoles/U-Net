@@ -5,7 +5,7 @@ from datasets.VOC import VOCSegmentationDataset
 from transforms.transforms import transform, val_transform
 import torch
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import ExponentialLR, ReduceLROnPlateau
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -96,7 +96,8 @@ def main(args):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
-    scheduler = ExponentialLR(optimizer, gamma=0.9, verbose=True)
+    # scheduler = ExponentialLR(optimizer, gamma=0.9, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=3, verbose=False)
 
     loss_weights=torch.Tensor(VOC12_PIXEL_WEIGHTLIST)
     criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
@@ -106,6 +107,7 @@ def main(args):
     jaccard = JaccardIndex(task='multiclass', num_classes=out_channels).to(device)
 
     for epoch in range(num_epochs):
+        last_lr = scheduler.get_last_lr()
         unet.train()  
 
         for idx, (images, masks) in enumerate(tqdm(train_loader)):
@@ -116,8 +118,7 @@ def main(args):
             masks = masks.to(device)
             loss = criterion(outputs, masks)
             writer.add_scalar("train. loss (iter)", loss, iter)
-            if idx%50 == 0:
-                print(f"Training loss (iter {idx}) = {loss}")
+            writer.add_scalar("lr (iter)", last_lr, iter)
             loss.backward()
             optimizer.step()
         writer.add_scalar("train. loss (epoch)", loss, epoch)
@@ -144,7 +145,7 @@ def main(args):
                 best_iou = val_iou
                 torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
         
-        scheduler.step()
+        scheduler.step(val_iou)
     writer.flush()
 
 if __name__ == '__main__':
