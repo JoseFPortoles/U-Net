@@ -1,11 +1,11 @@
 from models.ext_unet import UNet
-from models.helpers import init_weights
+from models.helpers import init_weights, freeze_encoder
 from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths, save_json_filelist
 from datasets.VOC import VOCSegmentationDataset
 from transforms.transforms import transform, val_transform
 import torch
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import ExponentialLR, ReduceLROnPlateau
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -31,6 +31,7 @@ parser.add_argument('--data_root', type=str, help='Dataset root folder path')
 parser.add_argument('--output_path', type=str, default='./checkpoints', help='Folder where trained weights are saved')
 parser.add_argument('--repartition_set', action='store_true', help='Repartition dataset')
 parser.add_argument('--partition_folder', type=str, )
+parser.add_argument('--frozen_encoder', action='store_true', help='Freezes encoder')
 
 args = parser.parse_args()
 
@@ -46,6 +47,8 @@ def main(args):
     output_path = args.output_path
     repartition_set = args.repartition_set
     partition_folder = args.partition_folder
+    frozen_encoder = args.frozen_encoder
+    
 
     writer = SummaryWriter()
 
@@ -55,6 +58,8 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     unet = UNet(weights=torchvision.models.VGG16_BN_Weights.IMAGENET1K_V1, out_channels=out_channels).to(device)
+    # unet.xavier_init_decoder()
+    unet = freeze_encoder(unet, freeze=frozen_encoder)
 
     if weights_path:
         if os.path.exists(weights_path):
@@ -67,9 +72,9 @@ def main(args):
         else:
             unet.apply(init_weights)
             print("Specified weights path does not exist, model was xavier initialised")
-    else:
-        unet.apply(init_weights)
-        print("No specified weights path, model was xavier initialised")
+    # else:
+    #     unet.apply(init_weights)
+    #     print("No specified weights path, model was xavier initialised")
 
     mask_paths = get_file_paths(os.path.join(data_root, 'SegmentationClass')) 
     dir_jpg = os.path.join(data_root, 'JPEGImages') 
@@ -96,7 +101,7 @@ def main(args):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
-    scheduler = ExponentialLR(optimizer, gamma=0.9, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2, verbose=False)
 
     loss_weights=torch.Tensor(VOC12_PIXEL_WEIGHTLIST)
     criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
@@ -106,18 +111,18 @@ def main(args):
     jaccard = JaccardIndex(task='multiclass', num_classes=out_channels).to(device)
 
     for epoch in range(num_epochs):
+        last_lr = optimizer.param_groups[0]['lr']
         unet.train()  
-
+        iter_epoch = len(train_loader)
         for idx, (images, masks) in enumerate(tqdm(train_loader)):
-            iter = idx + batch_size * epoch
+            iter = idx +  iter_epoch * epoch
             images = images.to(device)
             optimizer.zero_grad()
             outputs = unet(images)
             masks = masks.to(device)
             loss = criterion(outputs, masks)
             writer.add_scalar("train. loss (iter)", loss, iter)
-            if idx%50 == 0:
-                print(f"Training loss (iter {idx}) = {loss}")
+            writer.add_scalar("lr (iter)", last_lr, iter)
             loss.backward()
             optimizer.step()
         writer.add_scalar("train. loss (epoch)", loss, epoch)
@@ -144,7 +149,7 @@ def main(args):
                 best_iou = val_iou
                 torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
         
-        scheduler.step()
+        scheduler.step(val_iou)
     writer.flush()
 
 if __name__ == '__main__':
