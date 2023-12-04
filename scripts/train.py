@@ -32,6 +32,7 @@ parser.add_argument('--output_path', type=str, default='./checkpoints', help='Fo
 parser.add_argument('--repartition_set', action='store_true', help='Repartition dataset')
 parser.add_argument('--partition_folder', type=str, )
 parser.add_argument('--frozen_encoder', action='store_true', help='Freezes encoder')
+parser.add_argument('--add_contour_loss_weight', type=float, default=0, help='Add extra weight to segmentation of contours (See original U-Net article)')
 
 args = parser.parse_args()
 
@@ -48,6 +49,7 @@ def main(args):
     repartition_set = args.repartition_set
     partition_folder = args.partition_folder
     frozen_encoder = args.frozen_encoder
+    extra_contour_w = args.add_contour_loss_weight
     
 
     writer = SummaryWriter()
@@ -58,7 +60,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     unet = UNet(weights=torchvision.models.VGG16_BN_Weights.IMAGENET1K_V1, out_channels=out_channels).to(device)
-    # unet.xavier_init_decoder()
+    unet.xavier_init_decoder()
     unet = freeze_encoder(unet, freeze=frozen_encoder)
 
     if weights_path:
@@ -72,14 +74,12 @@ def main(args):
         else:
             unet.apply(init_weights)
             print("Specified weights path does not exist, model was xavier initialised")
-    # else:
-    #     unet.apply(init_weights)
-    #     print("No specified weights path, model was xavier initialised")
-
-    mask_paths = get_file_paths(os.path.join(data_root, 'SegmentationClass')) 
-    dir_jpg = os.path.join(data_root, 'JPEGImages') 
+    
+    mask_dir = os.path.join(data_root, 'SegmentationClass')
+    mask_paths = get_file_paths(mask_dir) 
+    jpg_dir = os.path.join(data_root, 'JPEGImages') 
     file_names = [os.path.splitext(os.path.basename(path))[0] for path in mask_paths]
-    image_paths = [os.path.join(dir_jpg, name + ".jpg") for name in file_names]
+    image_paths = [os.path.join(jpg_dir, name + ".jpg") for name in file_names]
 
     train_list_path = os.path.join(partition_folder, 'train.txt')
     val_list_path = os.path.join(partition_folder, 'val.txt')
@@ -90,10 +90,15 @@ def main(args):
         save_json_filelist(image_val, val_list_path)
     elif os.path.isfile(train_list_path) and os.path.isfile(val_list_path):
         print(f"Loading partition stored at {partition_folder}")
-        with open(os.path.join(partition_folder), "r") as fp:
-            filelist = json.load(fp)
-            image_train = [os.path.join(dir_jpg, img_file) for img_file in filelist]
-            mask_train = [os.path.join(mask_paths, file[:-3]+'png') for file in filelist]
+        with open(train_list_path, "r") as fp:
+            train_filelist = json.load(fp)
+            image_train = [os.path.join(jpg_dir, img_file) for img_file in train_filelist]
+            mask_train = [os.path.join(mask_dir, file[:-3]+'png') for file in train_filelist]
+        with open(val_list_path, "r") as fp:
+            val_filelist = json.load(fp)
+            image_val = [os.path.join(jpg_dir, img_file) for img_file in val_filelist]
+            mask_val = [os.path.join(mask_dir, file[:-3]+'png') for file in val_filelist]
+
 
     train_dataset = VOCSegmentationDataset(image_train, mask_train, crop_size=input_size, transform=transform(input_size))
     val_dataset = VOCSegmentationDataset(image_val, mask_val, crop_size=input_size, transform=val_transform(input_size))
@@ -103,7 +108,9 @@ def main(args):
     optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
     scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2, verbose=False)
 
-    loss_weights=torch.Tensor(VOC12_PIXEL_WEIGHTLIST)
+    loss_weights = [VOC12_PIXEL_WEIGHTLIST[k] + (k == 'contour') * extra_contour_w for k in VOC12_PIXEL_WEIGHTLIST]
+
+    loss_weights=torch.Tensor(loss_weights)
     criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
     print(f"Loss function: Applied category pixel weights = {loss_weights}")
 
