@@ -157,6 +157,8 @@ def main(args):
                 torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
         
         scheduler.step(val_iou)
+    writer.add_hparams({'lr': lr, 'wd': wd, 'batch_size': batch_size, 'extra_contour_w': extra_contour_w, 'frozen_encoder': frozen_encoder},
+                       {'last_val_loss': val_loss, 'last_val_iou': val_iou, 'best_val_iou': best_iou})
     writer.flush()
 
 if __name__ == '__main__':
