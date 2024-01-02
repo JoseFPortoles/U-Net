@@ -1,7 +1,7 @@
 from models.ext_unet import UNet
 from models.helpers import init_weights, freeze_encoder
 from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths, save_json_filelist
-from datasets.VOC import VOCSegmentationDataset
+from datasets.voc2012 import VOCSegmentationDataset
 from transforms.transforms import transform, val_transform
 import torch
 from torch.optim import Adam

@@ -1,4 +1,4 @@
-from datasets.VOC import VOCSegmentationDataset
+from datasets.voc2012 import VOCSegmentationDataset
 from transforms.transforms import transform
 from torch.utils.data import DataLoader
 import numpy as np
