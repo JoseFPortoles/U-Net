@@ -1,5 +1,5 @@
 from transforms.transforms import transform
-from datasets.VOC import VOCSegmentationDataset
+from datasets.voc2012 import VOCSegmentationDataset
 from datasets.helpers import tensor2img
 import matplotlib.pyplot as plt
 import cv2
