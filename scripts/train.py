@@ -17,6 +17,8 @@ parser.add_argument('--repartition_set', action='store_true', help='Repartition 
 parser.add_argument('--partition_folder', type=str, )
 parser.add_argument('--frozen_encoder', action='store_true', help='Freezes encoder')
 parser.add_argument('--add_contour_loss_weight', type=float, default=0, help='Add extra weight to segmentation of contours (See original U-Net article)')
+parser.add_argument('--lr_scheduler_factor', type=float, default=0.1, help='lr reduction factor for the lr scheduler')
+parser.add_argument('--lr_scheduler_patience', type=int, default=3, help='lr scheduler patience')
 
 args = parser.parse_args()
 
@@ -34,8 +36,12 @@ def main(args):
     partition_folder = args.partition_folder
     frozen_encoder = args.frozen_encoder
     extra_contour_w = args.add_contour_loss_weight
+    lr_scheduler_factor = args.lr_scheduler_factor
+    lr_scheduler_patience = args.lr_scheduler_patience
     
-    train_loop(num_epochs, batch_size, lr, wd, input_size, out_channels, weights_path, data_root, output_path, repartition_set, partition_folder, frozen_encoder, extra_contour_w)
+    train_loop(num_epochs, batch_size, lr, wd, input_size, out_channels, weights_path, data_root, 
+               output_path, repartition_set, partition_folder, frozen_encoder, extra_contour_w,
+               lr_scheduler_factor, lr_scheduler_patience)
 
 
 if __name__ == '__main__':

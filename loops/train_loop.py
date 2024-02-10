@@ -17,7 +17,7 @@ from tqdm import tqdm
 import json
 
 def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str,
-               repartition_set: bool, partition_folder: str, frozen_encoder: bool, extra_contour_w: float):
+               repartition_set: bool, partition_folder: str, frozen_encoder: bool, extra_contour_w: float, lr_scheduler_factor: float, lr_scheduler_patience: int):
     
     lr_start = lr
 
@@ -75,7 +75,7 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2, verbose=False)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=lr_scheduler_factor, patience=lr_scheduler_patience, verbose=False)
 
     loss_weights = [VOC12_PIXEL_WEIGHTLIST[k] + (k == 'contour') * extra_contour_w for k in VOC12_PIXEL_WEIGHTLIST]
 
