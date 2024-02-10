@@ -39,7 +39,7 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
                 print(f"Model was initialised with weights from {weights_path}")
             except Exception as e:
                 unet.apply(init_weights)
-                print("ERROR: Attempt at loading weights from {weights_path} threw an exception {e}.\nModel was xavier initialised instead!!!")    
+                print(f"ERROR: Attempt at loading weights from {weights_path} threw an exception {e}.\nModel was xavier initialised instead!!!")    
         else:
             unet.apply(init_weights)
             print("Specified weights path does not exist, model was xavier initialised")
