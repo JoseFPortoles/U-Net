@@ -36,21 +36,10 @@ parser.add_argument('--add_contour_loss_weight', type=float, default=0, help='Ad
 
 args = parser.parse_args()
 
-def main(args):
-    num_epochs = args.num_epochs
-    batch_size = args.batch_size
-    lr = args.lr
-    wd = args.wd
-    input_size = args.input_size
-    out_channels = args.num_segment_categories
-    weights_path = args.weights_path
-    data_root = args.data_root
-    output_path = args.output_path
-    repartition_set = args.repartition_set
-    partition_folder = args.partition_folder
-    frozen_encoder = args.frozen_encoder
-    extra_contour_w = args.add_contour_loss_weight
+def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str,
+               repartition_set: bool, partition_folder: str, frozen_encoder: bool, extra_contour_w: float):
     
+    lr_start = lr
 
     writer = SummaryWriter()
 
@@ -157,9 +146,27 @@ def main(args):
                 torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
         
         scheduler.step(val_iou)
-    writer.add_hparams({'lr': lr, 'wd': wd, 'batch_size': batch_size, 'extra_contour_w': extra_contour_w, 'frozen_encoder': frozen_encoder},
+    writer.add_hparams({'lr': lr_start, 'wd': wd, 'batch_size': batch_size, 'extra_contour_w': extra_contour_w, 'frozen_encoder': frozen_encoder},
                        {'last_val_loss': val_loss, 'last_val_iou': val_iou, 'best_val_iou': best_iou})
     writer.flush()
+
+def main(args):
+    num_epochs = args.num_epochs
+    batch_size = args.batch_size
+    lr = args.lr
+    wd = args.wd
+    input_size = args.input_size
+    out_channels = args.num_segment_categories
+    weights_path = args.weights_path
+    data_root = args.data_root
+    output_path = args.output_path
+    repartition_set = args.repartition_set
+    partition_folder = args.partition_folder
+    frozen_encoder = args.frozen_encoder
+    extra_contour_w = args.add_contour_loss_weight
+    
+    train_loop(num_epochs, batch_size, lr, wd, input_size, out_channels, weights_path, data_root, output_path, repartition_set, partition_folder, frozen_encoder, extra_contour_w)
+
 
 if __name__ == '__main__':
     main(args)
