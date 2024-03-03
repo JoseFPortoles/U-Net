@@ -32,11 +32,17 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     unet.xavier_init_decoder()
     unet = freeze_encoder(unet, freeze=frozen_encoder)
 
+    epoch_0 = 0
+
     if weights_path:
         if os.path.exists(weights_path):
             try:
-                unet.load_state_dict(torch.load(weights_path), map_location=device)
-                print(f"Model was initialised with weights from {weights_path}")
+                checkpoint = torch.load(weights_path)
+                unet.load_state_dict(checkpoint['model_state_dict'], map_location=device)
+                optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+                epoch_0 = checkpoint['epoch']
+                print(f"Loaded checkpoint at {weights_path}")
             except Exception as e:
                 unet.apply(init_weights)
                 print(f"ERROR: Attempt at loading weights from {weights_path} threw an exception {e}.\nModel was xavier initialised instead!!!")    
@@ -86,7 +92,7 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     best_iou = 0.0
     jaccard = JaccardIndex(task='multiclass', num_classes=out_channels).to(device)
 
-    for epoch in range(num_epochs):
+    for epoch in range(epoch_0, num_epochs):
         last_lr = optimizer.param_groups[0]['lr']
         unet.train()  
         iter_epoch = len(train_loader)
@@ -123,7 +129,14 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
             
             if val_iou >= best_iou:
                 best_iou = val_iou
-                torch.save(unet.state_dict(), os.path.join(output_path, 'best_model.pth'))
+                torch.save({
+                            'epoch': epoch,
+                            'model_state_dict': unet.state_dict(),
+                            'optimizer_state_dict': optimizer.state_dict(),
+                            'scheduler_state_dict': scheduler.state_dict(),
+                            'loss': loss,
+                            'val_loss': val_loss
+                            }, os.path.join(output_path, 'best_model.pth'))
         
         scheduler.step(val_iou)
     writer.add_hparams({'lr': lr_start, 'wd': wd, 'batch_size': batch_size, 'extra_contour_w': extra_contour_w, 'frozen_encoder': frozen_encoder},
