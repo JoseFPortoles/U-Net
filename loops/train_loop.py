@@ -93,6 +93,7 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     jaccard = JaccardIndex(task='multiclass', num_classes=out_channels).to(device)
 
     for epoch in range(epoch_0, num_epochs):
+        print(f'Epoch {epoch}/{num_epochs}')
         last_lr = optimizer.param_groups[0]['lr']
         unet.train()  
         iter_epoch = len(train_loader)
