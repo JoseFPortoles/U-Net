@@ -15,10 +15,12 @@ from sklearn.model_selection import train_test_split
 import os
 from tqdm import tqdm
 import json
+import datetime
 
 def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str,
                repartition_set: bool, partition_folder: str, frozen_encoder: bool, extra_contour_w: float, lr_scheduler_factor: float, lr_scheduler_patience: int):
     
+    timestamp = datetime.datetime.now()
     lr_start = lr
 
     writer = SummaryWriter()
@@ -137,7 +139,7 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
                             'scheduler_state_dict': scheduler.state_dict(),
                             'loss': loss,
                             'val_loss': val_loss
-                            }, os.path.join(output_path, 'best_model.pth'))
+                            }, os.path.join(output_path, f'best_model_{timestamp}.pth'))
         
         scheduler.step(val_iou)
     writer.add_hparams({'lr': lr_start, 'wd': wd, 'batch_size': batch_size, 'extra_contour_w': extra_contour_w, 'frozen_encoder': frozen_encoder},
