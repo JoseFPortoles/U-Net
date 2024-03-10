@@ -34,13 +34,16 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     unet.xavier_init_decoder()
     unet = freeze_encoder(unet, freeze=frozen_encoder)
 
+    optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
+    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=lr_scheduler_factor, patience=lr_scheduler_patience, verbose=False)
+    
     epoch_0 = 0
 
     if weights_path:
         if os.path.exists(weights_path):
             try:
-                checkpoint = torch.load(weights_path)
-                unet.load_state_dict(checkpoint['model_state_dict'], map_location=device)
+                checkpoint = torch.load(weights_path, map_location=device)
+                unet.load_state_dict(checkpoint['model_state_dict'])
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
                 epoch_0 = checkpoint['epoch']
@@ -81,9 +84,6 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     val_dataset = VOCSegmentationDataset(image_val, mask_val, crop_size=input_size, transform=val_transform(input_size))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-
-    optimizer = Adam(unet.parameters(), lr=lr, weight_decay=wd)
-    scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=lr_scheduler_factor, patience=lr_scheduler_patience, verbose=False)
 
     loss_weights = [VOC12_PIXEL_WEIGHTLIST[k] + (k == 'contour') * extra_contour_w for k in VOC12_PIXEL_WEIGHTLIST]
 
