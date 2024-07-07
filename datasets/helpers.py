@@ -30,7 +30,8 @@ VOC12_PIXEL_WEIGHTLIST = {
     }
 
 def tensor2img(img_tensor):
-    img = img_tensor[0].permute(1,2,0).numpy()
+    img = img_tensor.permute(1,2,0)
+    img = ((img - img.mean(axis=(0,1)))/img.std(axis=(0,1))).numpy()
     img = (img-img.min())/(img.max()-img.min())*255.
     return img.astype(np.uint8)
 

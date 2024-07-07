@@ -163,3 +163,6 @@ val.txt
 .vscode/launch.json
 runs/
 output/
+mi_carpeta.zip
+runs.zip
+weights/best_model_Mar10_14-47-58.pth
