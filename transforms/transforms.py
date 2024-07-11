@@ -23,6 +23,15 @@ def transform(img_size):
         ToTensorV2()
     ])
 
+def transform_ham10k(img_size):
+    img_size = reshape_img_size(img_size)    
+    return A.Compose([
+        A.HorizontalFlip(p=0.5),
+        Rotate(limit=15, crop_border=True),
+        A.Resize(*img_size),
+        ToTensorV2()
+    ])
+
 def val_transform(crop_size):
     crop_size = reshape_img_size(crop_size)    
     return A.Compose([

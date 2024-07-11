@@ -1,8 +1,9 @@
 from models.ext_unet import UNet
 from models.helpers import init_weights, freeze_encoder
-from datasets.helpers import VOC12_PIXEL_WEIGHTLIST, get_file_paths, save_json_filelist
-from datasets.voc2012 import VOCSegmentationDataset
-from transforms.transforms import transform, val_transform
+from datasets.helpers import get_file_paths, save_json_filelist
+# from datasets.voc2012 import VOCSegmentationDataset, VOC12_PIXEL_WEIGHTLIST
+from datasets.ham10k import HAM10kSegmentationDataset
+from transforms.transforms import transform_ham10k, val_transform
 import torch
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -17,8 +18,7 @@ from tqdm import tqdm
 import json
 import datetime
 
-def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str,
-               repartition_set: bool, partition_folder: str, frozen_encoder: bool, extra_contour_w: float, lr_scheduler_factor: float, lr_scheduler_patience: int):
+def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str, repartition_set: bool, partition_folder: str, frozen_encoder: bool, lr_scheduler_factor: float, lr_scheduler_patience: int):
     
     timestamp = datetime.datetime.now()
     lr_start = lr
@@ -55,10 +55,10 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
             unet.apply(init_weights)
             print("Specified weights path does not exist, model was xavier initialised")
     
-    mask_dir = os.path.join(data_root, 'SegmentationClass')
+    mask_dir = os.path.join(data_root, 'HAM10000_segmentations_lesion_tschandl', 'HAM10000_segmentations_lesion_tschandl')
     mask_paths = get_file_paths(mask_dir) 
-    jpg_dir = os.path.join(data_root, 'JPEGImages') 
-    file_names = [os.path.splitext(os.path.basename(path))[0] for path in mask_paths]
+    jpg_dir = os.path.join(data_root, 'HAM10000_images') 
+    file_names = [os.path.splitext(os.path.basename(path))[0][:-13] for path in mask_paths]
     image_paths = [os.path.join(jpg_dir, name + ".jpg") for name in file_names]
 
     train_list_path = os.path.join(partition_folder, 'train.txt')
@@ -73,26 +73,23 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
         with open(train_list_path, "r") as fp:
             train_filelist = json.load(fp)
             image_train = [os.path.join(jpg_dir, img_file) for img_file in train_filelist]
-            mask_train = [os.path.join(mask_dir, file[:-3]+'png') for file in train_filelist]
+            mask_train = [os.path.join(mask_dir, file[:-3]+'_segmentation.png') for file in train_filelist]
         with open(val_list_path, "r") as fp:
             val_filelist = json.load(fp)
             image_val = [os.path.join(jpg_dir, img_file) for img_file in val_filelist]
-            mask_val = [os.path.join(mask_dir, file[:-3]+'png') for file in val_filelist]
+            mask_val = [os.path.join(mask_dir, file[:-3]+'_segmentation.png') for file in val_filelist]
 
 
-    train_dataset = VOCSegmentationDataset(image_train, mask_train, crop_size=input_size, transform=transform(input_size))
-    val_dataset = VOCSegmentationDataset(image_val, mask_val, crop_size=input_size, transform=val_transform(input_size))
+    train_dataset = HAM10kSegmentationDataset(image_train, mask_train, crop_size=input_size, transform=transform_ham10k(input_size))
+    val_dataset = HAM10kSegmentationDataset(image_val, mask_val, crop_size=input_size, transform=val_transform(input_size))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    loss_weights = [VOC12_PIXEL_WEIGHTLIST[k] + (k == 'contour') * extra_contour_w for k in VOC12_PIXEL_WEIGHTLIST]
+    criterion = nn.BCEWithLogitsLoss().to(device)
 
-    loss_weights=torch.Tensor(loss_weights)
-    criterion = nn.CrossEntropyLoss(weight=loss_weights).to(device)
-    print(f"Loss function: Applied category pixel weights = {loss_weights}")
 
     best_iou = 0.0
-    jaccard = JaccardIndex(task='multiclass', num_classes=out_channels).to(device)
+    jaccard = JaccardIndex(task='binary', num_classes=out_channels).to(device)
 
     for epoch in range(epoch_0, num_epochs):
         print(f'Epoch {epoch}/{num_epochs}')
