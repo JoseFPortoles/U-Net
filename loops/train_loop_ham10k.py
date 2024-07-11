@@ -124,8 +124,10 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
 
             val_loss /= len(val_loader)
             val_iou /= len(val_loader)
-            writer.add_scalar("val. loss (epoch)", val_loss, iter)
-            writer.add_scalar("val. IoU (epoch)", val_iou, iter)
+            writer.add_scalar("val. loss (epoch)", val_loss, epoch)
+            writer.add_scalar("val. IoU (epoch)", val_iou, epoch)
+            print(f"val. loss (epoch): {val_loss} ({epoch})")
+            print(f"val. IoU (epoch), {val_iou} ({epoch})")
             
             if val_iou >= best_iou:
                 best_iou = val_iou
