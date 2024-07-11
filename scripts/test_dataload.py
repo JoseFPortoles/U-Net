@@ -1,4 +1,4 @@
-from datasets.ham10000 import HAM10kSegmentationDataset
+from datasets.ham10k import HAM10kSegmentationDataset
 from transforms.transforms import transform
 from datasets.helpers import tensor2img
 from pathlib import Path
