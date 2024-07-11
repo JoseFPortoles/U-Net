@@ -55,9 +55,9 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
             unet.apply(init_weights)
             print("Specified weights path does not exist, model was xavier initialised")
     
-    mask_dir = os.path.join(data_root, 'HAM10000_segmentations_lesion_tschandl', 'HAM10000_segmentations_lesion_tschandl')
+    mask_dir = os.path.join(data_root, 'masks')
     mask_paths = get_file_paths(mask_dir) 
-    jpg_dir = os.path.join(data_root, 'HAM10000_images') 
+    jpg_dir = os.path.join(data_root, 'images') 
     file_names = [os.path.splitext(os.path.basename(path))[0][:-13] for path in mask_paths]
     image_paths = [os.path.join(jpg_dir, name + ".jpg") for name in file_names]
 
@@ -139,6 +139,6 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
                             }, os.path.join(output_path, f'best_model_{timestamp}.pth'))
         
         scheduler.step(val_iou)
-    writer.add_hparams({'lr': lr_start, 'wd': wd, 'batch_size': batch_size, 'extra_contour_w': extra_contour_w, 'frozen_encoder': frozen_encoder},
+    writer.add_hparams({'lr': lr_start, 'wd': wd, 'batch_size': batch_size, 'frozen_encoder': frozen_encoder},
                        {'last_val_loss': val_loss, 'last_val_iou': val_iou, 'best_val_iou': best_iou})
     writer.flush()
