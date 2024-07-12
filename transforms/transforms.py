@@ -29,6 +29,7 @@ def transform_ham10k(img_size):
         A.HorizontalFlip(p=0.5),
         Rotate(limit=15, crop_border=True),
         A.Resize(*img_size),
+        Normalize(),
         ToTensorV2()
     ])
 
