@@ -32,6 +32,7 @@ class UNet(nn.Module):
 
 
         self.bottleneck = nn.Sequential(*self.encoder[34:])
+        self.dropout = nn.Dropout(0.5)
         self.conv_bottleneck = conv(512, 1024)
 
 
@@ -74,6 +75,7 @@ class UNet(nn.Module):
 
 
         bottleneck = self.bottleneck(block5)
+        bottleneck = self.dropout(bottleneck)
         x = self.conv_bottleneck(bottleneck)
 
 

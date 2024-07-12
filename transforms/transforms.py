@@ -28,6 +28,8 @@ def transform_ham10k(img_size):
     return A.Compose([
         A.HorizontalFlip(p=0.5),
         Rotate(limit=15, crop_border=True),
+        A.ElasticTransform(p=0.5, alpha=1.0, sigma=50.0),
+        A.RandomBrightnessContrast(p=0.5, brightness_limit=0.2, contrast_limit=0.2),
         A.Resize(*img_size),
         Normalize(),
         ToTensorV2()
