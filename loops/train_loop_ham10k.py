@@ -18,7 +18,7 @@ from tqdm import tqdm
 import json
 import datetime
 
-def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str, repartition_set: bool, partition_folder: str, frozen_encoder: bool, lr_scheduler_factor: float, lr_scheduler_patience: int):
+def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_size: int, out_channels: int, weights_path: str, data_root: str, output_path: str, repartition_set: bool, partition_folder: str, frozen_encoder: bool, lr_scheduler_factor: float, lr_scheduler_patience: int, num_workers: int, pin_memory: bool=True):
     
     timestamp = datetime.datetime.now()
     lr_start = lr
@@ -73,17 +73,17 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
         with open(train_list_path, "r") as fp:
             train_filelist = json.load(fp)
             image_train = [os.path.join(jpg_dir, img_file) for img_file in train_filelist]
-            mask_train = [os.path.join(mask_dir, file[:-3]+'_segmentation.png') for file in train_filelist]
+            mask_train = [os.path.join(mask_dir, file[:-4]+'_segmentation.png') for file in train_filelist]
         with open(val_list_path, "r") as fp:
             val_filelist = json.load(fp)
             image_val = [os.path.join(jpg_dir, img_file) for img_file in val_filelist]
-            mask_val = [os.path.join(mask_dir, file[:-3]+'_segmentation.png') for file in val_filelist]
+            mask_val = [os.path.join(mask_dir, file[:-4]+'_segmentation.png') for file in val_filelist]
 
 
     train_dataset = HAM10kSegmentationDataset(image_train, mask_train, crop_size=input_size, transform=transform_ham10k(input_size))
     val_dataset = HAM10kSegmentationDataset(image_val, mask_val, crop_size=input_size, transform=val_transform(input_size))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
     criterion = nn.BCEWithLogitsLoss().to(device)
 

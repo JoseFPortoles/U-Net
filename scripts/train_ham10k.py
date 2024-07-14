@@ -19,28 +19,16 @@ parser.add_argument('--frozen_encoder', action='store_true', help='Freezes encod
 parser.add_argument('--lr_scheduler_factor', type=float, default=0.1, help='lr reduction factor for the lr scheduler.')
 parser.add_argument('--lr_scheduler_patience', type=int, default=3, help='lr scheduler patience.')
 parser.add_argument('--train_loop', type=str, help='Name of the train loop file without extension.')
+parser.add_argument('--num_workers', type=int, help='Num. workers for data loading.')
+parser.add_argument('--pin_memory', action='store_true', help='Use pin memory in data loading')
 
 args = parser.parse_args()
 
 def main(args):
-    num_epochs = args.num_epochs
-    batch_size = args.batch_size
-    lr = args.lr
-    wd = args.wd
-    input_size = args.input_size
-    out_channels = args.num_segment_categories
-    weights_path = args.weights_path
-    data_root = args.data_root
-    output_path = args.output_path
-    repartition_set = args.repartition_set
-    partition_folder = args.partition_folder
-    frozen_encoder = args.frozen_encoder
-    lr_scheduler_factor = args.lr_scheduler_factor
-    lr_scheduler_patience = args.lr_scheduler_patience
     
-    train_loop(num_epochs, batch_size, lr, wd, input_size, out_channels, weights_path, data_root, 
-               output_path, repartition_set, partition_folder, frozen_encoder,
-               lr_scheduler_factor, lr_scheduler_patience)
+    train_loop(args.num_epochs, args.batch_size, args.lr, args.wd, args.input_size, args.num_segment_categories, args.weights_path, args.data_root, 
+               args.output_path, args.repartition_set, args.partition_folder, args.frozen_encoder,
+               args.lr_scheduler_factor, args.lr_scheduler_patience, args.num_workers, args.pin_memory)
 
 
 if __name__ == '__main__':
