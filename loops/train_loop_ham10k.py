@@ -91,6 +91,26 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
     best_iou = 0.0
     jaccard = JaccardIndex(task='binary', num_classes=out_channels).to(device)
 
+    if weights_path is None:
+        unet.eval()
+        with torch.no_grad():
+            val_loss = 0.0
+            val_iou = 0.0
+
+            for images, masks in val_loader:
+                images = images.to(device)
+                masks = masks.to(device)
+                outputs = unet(images)
+                val_loss += criterion(outputs, masks)
+                val_iou += jaccard(outputs, masks)
+
+            val_loss /= len(val_loader)
+            val_iou /= len(val_loader)
+            writer.add_scalar("val. loss (epoch)", val_loss, epoch)
+            writer.add_scalar("val. IoU (epoch)", val_iou, epoch)
+            print(f"val. loss (epoch): {val_loss} ({epoch})")
+            print(f"val. IoU (epoch), {val_iou} ({epoch})")
+
     for epoch in range(epoch_0, num_epochs):
         print(f'Epoch {epoch}/{num_epochs}')
         last_lr = optimizer.param_groups[0]['lr']
