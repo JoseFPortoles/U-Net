@@ -106,10 +106,10 @@ def train_loop(num_epochs: int, batch_size: int, lr: float, wd: float, input_siz
 
             val_loss /= len(val_loader)
             val_iou /= len(val_loader)
-            writer.add_scalar("val. loss (epoch)", val_loss, epoch)
-            writer.add_scalar("val. IoU (epoch)", val_iou, epoch)
-            print(f"val. loss (epoch): {val_loss} ({epoch})")
-            print(f"val. IoU (epoch), {val_iou} ({epoch})")
+            writer.add_scalar("val. loss (epoch)", val_loss, -1)
+            writer.add_scalar("val. IoU (epoch)", val_iou, -1)
+            print(f"val. loss (epoch): {val_loss} ({-1})")
+            print(f"val. IoU (epoch), {val_iou} ({-1})")
 
     for epoch in range(epoch_0, num_epochs):
         print(f'Epoch {epoch}/{num_epochs}')
