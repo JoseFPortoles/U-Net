@@ -26,7 +26,9 @@ def transform(img_size):
 def transform_ham10k(img_size):
     img_size = reshape_img_size(img_size)    
     return A.Compose([
+        RandomCrop(*img_size, p=0.5),
         A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
         Rotate(limit=15, crop_border=True),
         A.ElasticTransform(p=0.5, alpha=1.0, sigma=50.0),
         A.RandomBrightnessContrast(p=0.5, brightness_limit=0.2, contrast_limit=0.2),
