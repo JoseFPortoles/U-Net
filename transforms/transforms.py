@@ -44,3 +44,11 @@ def val_transform(crop_size):
                 Normalize(),
                 ToTensorV2()
             ])
+
+def test_transform(input_size):
+    input_size = reshape_img_size(input_size)
+    return A.Compose([
+                A.Resize(*input_size),
+                Normalize(),
+                ToTensorV2()
+            ])
