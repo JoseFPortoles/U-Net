@@ -1,6 +1,5 @@
 import albumentations as A
 from albumentations.augmentations.crops.transforms import RandomCrop
-from albumentations.augmentations.transforms import Normalize
 from albumentations.augmentations.geometric.rotate import Rotate
 from albumentations.pytorch.transforms import ToTensorV2
 
@@ -19,7 +18,7 @@ def transform(img_size):
         A.HorizontalFlip(p=0.5),
         Rotate(limit=15, crop_border=True),
         A.Resize(*img_size),
-        Normalize(),
+        A.Normalize(),
         ToTensorV2()
     ])
 
@@ -33,7 +32,7 @@ def transform_ham10k(img_size):
         A.ElasticTransform(p=0.5, alpha=1.0, sigma=50.0),
         A.RandomBrightnessContrast(p=0.5, brightness_limit=0.2, contrast_limit=0.2),
         A.Resize(*img_size),
-        Normalize(),
+        A.Normalize(),
         ToTensorV2()
     ])
 
@@ -41,7 +40,7 @@ def val_transform(crop_size):
     crop_size = reshape_img_size(crop_size)    
     return A.Compose([
                 RandomCrop(*crop_size),
-                Normalize(),
+                A.Normalize(),
                 ToTensorV2()
             ])
 
@@ -49,6 +48,6 @@ def test_transform(input_size):
     input_size = reshape_img_size(input_size)
     return A.Compose([
                 A.Resize(*input_size),
-                Normalize(),
+                A.Normalize(),
                 ToTensorV2()
             ])
